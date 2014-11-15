@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+
+{% block content1 %}
+
+
+<body>
+    <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+    <script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='js/jquery-checkbox/jquery.checkbox.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='js/jquery-checkbox/jquery.safari-checkbox.css') }}" />
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-checkbox/jquery.checkbox.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='themes/smoothness/jquery-ui.css') }}" />
+
+
+    <script>
+      $(function() {
+        $( "#accordion").accordion({
+          collapsible: false,
+          heightStyle: "fill",
+          header: "> div > h3"
+        })
+        .sortable({
+        axis: "y",
+        handle: "h3",
+        stop: function( event, ui ) {
+          // IE doesn't register the blur when sorting
+          // so trigger focusout handlers to remove .ui-state-focus
+          ui.item.children( "h3" ).triggerHandler( "focusout" );
+        }
+        });
+      });
+    </script>
+    <script>
+        $(document).ready(function() {
+          // ":not([safari])" is desirable but not necessary selector
+          $('input:checkbox:not([safari])').checkbox();
+          $('input[safari]:checkbox').checkbox({cls:'jquery-safari-checkbox'});
+          $('input:radio').checkbox();
+        });
+    </script>
+
+      <div class="navbar navbar-inverse navbar-fixed-top nav-collapse">
+      <div class="navbar-inner">
+        <a class="brand" href="http://www.openrov.com/"><img src="{{ url_for('static', filename='themes/OpenROV/img/openrov.png')}}" class="logo"/></a>
+        <!--<ul class="nav" id="navtoolbar">
+          <li><a href="#"><img id="keyboardpopover" src="{{ url_for('static', filename='themes/OpenROV/img/keyboard.png')}}" data-trigger="hover" data-placement="bottom" rel='popover' title="keyboard commands" html="true" /></a></li>
+          <li><a href="#" id="servoTilt"></a></li>
+        </ul>-->
+        <ul id="menuitems" class="nav pull-right">
+          <li><a href="{{url_for('cockpit')}}" id="main">Cockpit</a></li>
+          <li><a href="#" id="show-diagnostic">Diagnostic</a></li>
+        </ul>
+      </div>
+    </div>
+    <div id="accordion" style="width: 100%;height: 100%;overflow: scroll;">
+        <div class="group">
+            <h3>Main Settings</h3>
+                <div id="form1" style="height:100%;width:100%">
+                                  <form id="settingsForm" action="{{url_for('save_settings')}}" method="post" name="setting_form" >
+                                      <div style="float:left;width:50%">
+                                        <table>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>Times Run: </label></td>
+                                        <td><label>{{timesRun}}</label></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="daemon">Daemon: </label></td>
+                                        <td>
+                                            {% if daemon == "True" %}
+                                                <input name="daemon" type="checkbox" id="daemon" checked>
+                                            {% else %}
+                                                <input name="daemon" type="checkbox" id="daemon" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>PID File: </label></td>
+                                        <td>
+                                            {% if pidFile == "True" %}
+                                                <input name="PIDfile" type="checkbox" id="pidFile" checked>
+                                            {% else %}
+                                                <input name="PIDfile" type="checkbox" id="PIDfile" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>PID Filename: </label></td>
+                                        <td>
+                                            {% if pidFile == "True" %}
+                                                <input name="PIDfileInput" id="PIDfileInput" style="width:235px" value="{{pidFIle}}">
+                                            {% else %}
+                                                <input name="PIDfileInput" id="PIDfileInput" style="width:235px" disabled="disabled">
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>Port: </label></td>
+                                        <td><input name="port" id="port" style="width:235px" value="{{port}}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="verbose">Verbose: </label></td>
+                                         <td>
+                                            {% if verbose == "True" %}
+                                                <input name="verbose" type="checkbox" id="verbose" checked>
+                                            {% else %}
+                                                <input name="verbose" type="checkbox" id="verbose" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="development">Development: </label></td>
+                                         <td>
+                                            {% if development == "True" %}
+                                                <input name="development" type="checkbox" id="development" checked>
+                                            {% else %}
+                                                <input name="development" type="checkbox" id="development" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="kiosk">Kiosk: </label></td>
+                                         <td>
+                                            {% if kiosk == "True" %}
+                                                <input name="kiosk" type="checkbox" id="kiosk" checked>
+                                            {% else %}
+                                                <input name="kiosk" type="checkbox" id="kiosk" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="noUpdate">Do Not Update: </label></td>
+                                         <td>
+                                            {% if noUpdate == "True" %}
+                                                <input name="noUpdate" type="checkbox" id="noUpdate" checked>
+                                            {% else %}
+                                                <input name="noUpdate" type="checkbox" id="noUpdate" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>Web Root: </label></td>
+                                        <td><input name="webRoot" id="webRoot" style="width:235px" value="{{webRoot}}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        <td>
+                                            <button onclick="document.forms['settingsForm'].submit();">Save Settings</button>
+                                            <button onclick="">Restore ROV Defaults</button>
+                                        </td>
+                                        </tr>
+
+                                    </table>
+                                    </div>
+                                    <div style="float:right;width:50%">
+                                        <table>
+                                        <tr>
+                                        <td>&nbsp;</td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>deadzone_pos: </label></td>
+                                        <td><input name="deadzone_pos" id="deadzone_pos" value="{{ deadzone_pos }}" /></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>deadzone_neg: </label></td>
+                                        <td><input name="deadzone_neg" id="deadzone_neg" value="{{ deadzone_neg }}" /></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>smoothing_increment: </label></td>
+                                        <td><input name="smoothingIncrement" id="smoothingIncrement" value="{{ smoothingIncrement }}" /></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>photo_directory: </label></td>
+                                        <td><input name="photoDirectory" id="photoDirectory" style="width:235px" value="{{ photoDirectory }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="water_type">Water Type: </label></td>
+                                        <td><div class="ui-widget">
+                                            <select id="combobox" class="ui-combobox" name="water_type" style="width:235px">
+                                                <option value="">Select an option...</option>
+                                                {% for item in waterTypes %}
+                                                    {% if item == water_type %}
+                                                        <option value="{{ item }}" selected>{{ item }}</option>
+                                                    {% else %}
+                                                        <option value="{{ item }}">{{ item }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>thrust_modifier_port: </label></td>
+                                        <td><input name="thrust_modifier_port" id="thrust_modifier_port" style="width:235px" value="{{ thrust_modifier_port }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>thrust_modifier_stbd: </label></td>
+                                        <td><input name="thrust_modifier_stbd" id="thrust_modifier_stbd" style="width:235px" value="{{ thrust_modifier_stbd }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>thrust_modifier_vert: </label></td>
+                                        <td><input name="thrust_modifier_vert" id="thrust_modifier_vert" style="width:235px" value="{{ thrust_modifier_vert }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>thrust_modifier_nport: </label></td>
+                                        <td><input name="thrust_modifier_nport" id="thrust_modifier_nport" style="width:235px" value="{{ thrust_modifier_nport }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>thrust_modifier_nstbd: </label></td>
+                                        <td><input name="thrust_modifier_nstbd" id="thrust_modifier_nstbd" style="width:235px" value="{{ thrust_modifier_nstbd }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>thrust_modifier_nvert: </label></td>
+                                        <td><input name="thrust_modifier_nvert" id="thrust_modifier_nvert" style="width:235px" value="{{ thrust_modifier_nvert }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="rov_debug">debug: </label></td>
+                                         <td>
+                                            {% if rovDebug == "True" %}
+                                                <input name="rov_debug" type="checkbox" id="rov_debug" checked>
+                                            {% else %}
+                                                <input name="rov_debug" type="checkbox" id="rov_debug" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="debugCommands">debug_commands: </label></td>
+                                         <td>
+                                            {% if debugCommands == "True" %}
+                                                <input name="debugCommands" type="checkbox" id="debugCommands" checked>
+                                            {% else %}
+                                                <input name="debugCommands" type="checkbox" id="debugCommands" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="production">production: </label></td>
+                                         <td>
+                                            {% if production == "True" %}
+                                                <input name="production" type="checkbox" id="production" checked>
+                                            {% else %}
+                                                <input name="production" type="checkbox" id="production" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>deadzone: </label></td>
+                                        <td><input name="deadzone" id="deadzone" style="width:235px" value="{{ deadzone }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>video_device: </label></td>
+                                        <td><input name="video_device" id="video_device" style="width:235px" value="{{ video_device }}"></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="serial_baud">Baud Rate: </label></td>
+                                        <td><div class="ui-widget">
+                                            <select id="serialCombobox" class="ui-combobox" name="serial_baud" style="width:235px">
+                                                <option value="">Select an option...</option>
+                                                {% for item in serialRates %}
+                                                    {% if item == serial_baud %}
+                                                        <option value="{{ item }}" selected>{{ item }}</option>
+                                                    {% else %}
+                                                        <option value="{{ item }}">{{ item }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div></td>
+                                        </tr>
+                                        <tr>
+                                        <td><label for="USE_MOCK">USE_MOCK: </label></td>
+                                         <td>
+                                            {% if USE_MOCK == "True" %}
+                                                <input name="USE_MOCK" type="checkbox" id="USE_MOCK" checked>
+                                            {% else %}
+                                                <input name="USE_MOCK" type="checkbox" id="USE_MOCK" >
+                                            {% endif %}
+                                        </td>
+                                        </tr>
+                                        <tr>
+                                        <td><label>title: </label></td>
+                                        <td><input name="title" id="title" style="width:235px" value="{{ title }}"></td>
+                                        </tr>
+
+                                    </table>
+                                    </div>
+                      </form>
+                    </div>
+                </div>
+                <div class="group">
+                    <h3>Plugin Settings</h3>
+                    <div id="form2" style="height:100%;width:100%">
+                                  <form id="pluginsForm" action="{{url_for('save_plugin_settings')}}" method="post" name="plugin_form" >
+                                      <div style="float:left;width:50%">
+                                        <table>
+
+                                            {% for plugin in plugins %}
+                                                <tr>
+                                                <td><label for="{{ plugin['key'] }}">{{ plugin['key'] }}</label></td>
+                                                 <td>
+                                                    {% if plugin['value'] == "1" %}
+                                                        <input name="{{ plugin['key'] }}" type="checkbox" id="{{ plugin['key'] }}" checked>
+                                                    {% else %}
+                                                        <input name="{{ plugin['key'] }}" type="checkbox" id="{{ plugin['key'] }}" >
+                                                    {% endif %}
+                                                </td>
+                                                </tr>
+                                            {% endfor %}
+
+                                        </table>
+                                    </div>
+                                </form>
+                            </div>
+                </div>
+                <div class="group">
+                    <h3>ROV Settings</h3>
+                    <div id="form3" style="height:100%;width:100%">
+                                  <form id="miscRovForm" action="{{url_for('save_rov_settings')}}" method="post" name="rov_setting_form" >
+                                      <div style="float:left;width:50%">
+                                        <table>
+
+                                            {% for rovSetting in rovSettings %}
+                                                <tr>
+                                                <td><label for="{{ rovSetting['key'] }}">{{ rovSetting['key'] }} </label></td>
+                                                 <td>
+                                                    {% if rovSetting['value'] == "1" %}
+                                                        <input name="{{ rovSetting['key'] }}" type="checkbox" id="{{ rovSetting['key'] }}" checked>
+                                                    {% else %}
+                                                        <input name="{{ rovSetting['key'] }}" type="checkbox" id="{{ rovSetting['key'] }}" >
+                                                    {% endif %}
+                                                </td>
+                                                </tr>
+                                            {% endfor %}
+
+                                        </table>
+                                    </div>
+                                </form>
+                            </div>
+                </div>
+                <div class="group">
+                    <h3>Socket IO Test</h3>
+                    <div>
+                    <h2>Send:</h2>
+                                <form id="emit" method='POST' action='#'>
+                                <input type="text" name="emit_data" id="emit_data" placeholder="Message">
+                                <input type="submit" value="Echo">
+                                </form>
+                                <form id="broadcast" method='POST' action='#'>
+                                <input type="text" name="broadcast_data" id="broadcast_data" placeholder="Message">
+                                <input type="submit" value="Broadcast">
+                                </form>
+                                <form id="join" method='POST' action='#'>
+                                <input type="text" name="join_room" id="join_room" placeholder="Room Name">
+                                <input type="submit" value="Join Room">
+                                </form>
+                                <form id="leave" method='POST' action='#'>
+                                <input type="text" name="leave_room" id="leave_room" placeholder="Room Name">
+                                <input type="submit" value="Leave Room">
+                                </form>
+                                <form id="send_room" method='POST' action='#'>
+                                <input type="text" name="room_name" id="room_name" placeholder="Room Name">
+                                <input type="text" name="room_data" id="room_data" placeholder="Message">
+                                <input type="submit" value="Send to Room">
+                                </form>
+                    <h2>Receive:</h2>
+                                <div id="testlog" style="height:120px;width:50%;border:1px solid #ccc;font:16px/26px Georgia, Garamond, Serif;overflow:auto;"></div>
+                            </div>
+                </div>
+
+        </div>
+
+    <!--<div id="footer" class="navbar navbar-inverse navbar-fixed-bottom nav-collapse collapse visible-desktop">
+            <div class="navbar-inner">
+                <div id="footercontent" class="container-fluid" style="height: 100%">
+                </div>
+            </div>
+        </div>-->
+
+    <div class="drop-in-right" id="diagnostic">
+            <div class="back-button"></div><h3>Diagnostics</h3>
+            <div class="settings-block">
+                <h4>Pre-Flight Check</h4>
+            </div>
+                <div class="settings-block">
+                <h4>Callibration</h4>
+                <a href="#" class="btn" id="callibrate_compass">Callibrate Compass</a>
+                <a href="#" class="btn" id="zero_depth">Zero Depth</a>
+            </div>
+
+        </div>
+        <script>
+            $( "#deadzone_pos" ).spinner();
+            $( "#deadzone_neg" ).spinner();
+            $( "#smoothingIncrement" ).spinner();
+            $( "#thrust_modifier_port" ).spinner();
+            $( "#thrust_modifier_stbd" ).spinner();
+            $( "#thrust_modifier_vert" ).spinner();
+            $( "#thrust_modifier_nport" ).spinner();
+            $( "#thrust_modifier_nstbd" ).spinner();
+            $( "#thrust_modifier_nvert" ).spinner();
+            $( "#deadzone" ).spinner();
+
+        </script>
+        <style>
+                  .ui-autocomplete {
+                    max-height: 230px;
+                    max-width: 280px;
+                    overflow-y: auto;
+                    overflow-x: hidden; /* add padding to account for vertical scrollbar */
+                    z-index:1000 !important;
+                    }
+                    .custom-combobox {
+                    position: relative;
+                    display: inline-block;
+                    }
+                    .custom-combobox-toggle {
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    margin-left: -1px;
+                    padding: 0;
+                    /* support: IE7 */
+                    *height: 1.7em;
+                    *top: 0.1em;
+                    }
+                    .custom-combobox-input {
+                    margin: 0;
+                    padding: 0.3em;
+                    }
+                </style>
+                <script>
+                /*{
+                        select: function( event, ui ) {
+                            console.log($("#serialCombobox").val())
+                            $.post("{{ url_for('changeWaterType') }}", $("#serialCombobox").val());
+                        }
+                    }*/
+                </script>
+                <script>
+                    (function( $ ) {
+                    $.widget( "custom.combobox", {
+                    _create: function() {
+                    this.wrapper = $( "<span>" )
+                    .addClass( "custom-combobox" )
+                    .insertAfter( this.element );
+                    this.element.hide();
+                    this._createAutocomplete();
+                    this._createShowAllButton();
+                    },
+                    _createAutocomplete: function() {
+                    var selected = this.element.children( ":selected" ),
+                    value = selected.val() ? selected.text() : "{{ currentStation }}";
+                    this.input = $( "<input>" )
+                    .appendTo( this.wrapper )
+                    .val( value )
+                    .attr( "title", "" )
+                    .addClass( "custom-combobox-input ui-widget ui-widget-content ui-state-default ui-corner-left" )
+                    .autocomplete({
+                    delay: 0,
+                    minLength: 0,
+                    source: $.proxy( this, "_source" )
+                    })
+                    .tooltip({
+                    tooltipClass: "ui-state-highlight"
+                    });
+                    this._on( this.input, {
+                    autocompleteselect: function( event, ui ) {
+                    ui.item.option.selected = true;
+                    this._trigger( "select", event, {
+                    item: ui.item.option
+                    });
+                    },
+                    autocompletechange: "_removeIfInvalid"
+                    });
+                    },
+                    _createShowAllButton: function() {
+                    var input = this.input,
+                    wasOpen = false;
+                    $( "<a>" )
+                    .attr( "tabIndex", -1 )
+                    .attr( "title", "Show All Items" )
+                    .tooltip()
+                    .appendTo( this.wrapper )
+                    .button({
+                    icons: {
+                    primary: "ui-icon-triangle-1-s"
+                    },
+                    text: false
+                    })
+                    .removeClass( "ui-corner-all" )
+                    .addClass( "custom-combobox-toggle ui-corner-right" )
+                    .mousedown(function() {
+                    wasOpen = input.autocomplete( "widget" ).is( ":visible" );
+                    })
+                    .click(function() {
+                    input.focus();
+                    // Close if already visible
+                    if ( wasOpen ) {
+                    return;
+                    }
+                    // Pass empty string as value to search for, displaying all results
+                    input.autocomplete( "search", "" );
+                    });
+                    },
+                    _source: function( request, response ) {
+                    var matcher = new RegExp( $.ui.autocomplete.escapeRegex(request.term), "i" );
+                    response( this.element.children( "option" ).map(function() {
+                    var text = $( this ).text();
+                    if ( this.value && ( !request.term || matcher.test(text) ) )
+                    return {
+                    label: text,
+                    value: text,
+                    option: this
+                    };
+                    }) );
+                    },
+                    _removeIfInvalid: function( event, ui ) {
+                    // Selected an item, nothing to do
+                    if ( ui.item ) {
+                    return;
+                    }
+                    // Search for a match (case-insensitive)
+                    var value = this.input.val(),
+                    valueLowerCase = value.toLowerCase(),
+                    valid = false;
+                    this.element.children( "option" ).each(function() {
+                    if ( $( this ).text().toLowerCase() === valueLowerCase ) {
+                    this.selected = valid = true;
+                        return false;
+                    }
+                    });
+                    // Found a match, nothing to do
+                    if ( valid ) {
+                    return;
+                    }
+                    // Remove invalid value
+                    this.input
+                    .val( "" )
+                    .attr( "title", value + " didn't match any item" )
+                    .tooltip( "open" );
+                    this.element.val( "" );
+                    this._delay(function() {
+                    this.input.tooltip( "close" ).attr( "title", "" );
+                    }, 2500 );
+                    this.input.data( "ui-autocomplete" ).term = "";
+                    },
+                    _destroy: function() {
+                    this.wrapper.remove();
+                    this.element.show();
+                    }
+                    });
+                    })( jQuery );
+                    $(function() {
+                    $( "#combobox" ).combobox();
+                    $( "#serialCombobox" ).combobox();
+                    $( "#toggle" ).click(function() {
+                    $( "#combobox, #serialCombobox" ).toggle();
+                    });
+                    });
+                </script>
+                <script>
+                    $("serialCombobox").change(function() {
+                        alert(this.value);
+                    });
+                </script>
+        <script>
+        /* ------------------------------------------
+               diagnostic
+               */
+              var options = {};
+
+
+              $("#show-diagnostic").click(function() {
+                  $("#diagnostic").show('fold');
+                  cockpit.sendUpdateEnabled=false;
+                  Mousetrap.bind('esc', hideDiagnostic);
+                  keyboardHandler.unbindKeys();
+              });
+
+              $("#diagnostic .back-button").click(function() {
+                  hideDiagnostic();
+              });
+
+              function hideDiagnostic() {
+                  $("#diagnostic").hide('fold');
+                  cockpit.sendUpdateEnabled=true;
+                  Mousetrap.unbind('esc');
+                  keyboardHandler.bindKeys();
+              }
+
+
+          $('#zero_depth').click(function() {
+            socket.emit('depth_zero');
+          });
+
+          $('#callibrate_compass').click(function() {
+            socket.emit('compass_callibrate');
+          });
+        </script>
+</body>
+
+{% endblock %}

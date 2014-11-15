@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+    <title>{{ title }}</title>
+        <script src="{{ url_for('static', filename='js/jquery/jquery-ui-1.10.3.custom.js') }}"></script>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js?ver=1.4.2"></script>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui-1.10.3.custom.min.css') }}" />
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}"/>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-responsive.css') }}"/>
+        <link rel="stylesheet" href="{{ url_for('static', filename='themes/OpenROV/css/style.css') }}"/>
+
+    {% for thisStyle in range(0, stylesLen) %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles[{{thisStyle}}]') }}"/>
+    {% endfor %}
+
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function(){
+        namespace = '/test'; // change to an empty string to use the global namespace
+        // the socket.io documentation recommends sending an explicit package upon connection
+        // this is specially important when using the global namespace
+        var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
+        //console.log('http://' + document.domain + ':' + location.port + namespace)
+        socket.on('connect', function() {
+        socket.emit('my event', {data: 'I\'m connected!'});
+        });
+        // event handler for server sent data
+        // the data is displayed in the "Received" section of the page
+        socket.on('navdata', function(msg) {
+        $('#testlog').append('<br>Received #' + msg.count + ': ' + msg.data);
+        });
+        // handlers for the different forms in the page
+        // these send data to the server in a variety of ways
+        $('form#emit').submit(function(event) {
+        socket.emit('my event', {data: $('#emit_data').val()});
+        return false;
+        });
+        $('form#broadcast').submit(function(event) {
+        socket.emit('my broadcast event', {data: $('#broadcast_data').val()});
+        return false;
+        });
+        $('form#join').submit(function(event) {
+        socket.emit('join', {room: $('#join_room').val()});
+        return false;
+        });
+        $('form#leave').submit(function(event) {
+        socket.emit('leave', {room: $('#leave_room').val()});
+        return false;
+        });
+        $('form#send_room').submit(function(event) {
+        socket.emit('my room event', {room: $('#room_name').val(), data: $('#room_data').val()});
+        return false;
+        });
+        });
+    </script>
+
+
+  </head>
+
+  <script src="{{ url_for('static', filename='js/libs/eventemitter2.js') }}"></script>
+  <script>
+    cockpitEventEmitter = new EventEmitter2();
+  </script>
+  <script src="{{ url_for('static', filename='js/libs/bootstrap.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/libs/mousetrap.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/libs/knockout-2.1.0.js') }}"></script>
+  <!--<script src="{{ url_for('static', filename='js/libs/gamepad.js') }}"></script>-->
+  <script src="{{ url_for('static', filename='js/utilities.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/keypad.js') }}"></script>
+  <!--<script src="{{ url_for('static', filename='js/gamepad.js') }}"></script>-->
+  <script src="{{ url_for('static', filename='js/frame.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/cockpit.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/libs/db.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/libs/IndexedDBShim.min.js') }}"></script>
+
+  {% for thisScript in range(0,scriptsLen) %}
+      <script type="text/javascript" src="{{ url_for('static', filename='scripts[{{thisScript}}]')}}'"></script>
+  {% endfor %}
+
+  {% block content1 %}
+  {% endblock %}
+
+
+</html>

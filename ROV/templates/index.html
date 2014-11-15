@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block content1 %}
+
+  <body>
+
+
+      <div class="navbar navbar-inverse navbar-fixed-top nav-collapse">
+      <div class="navbar-inner">
+        <a class="brand" href="http://www.openrov.com/"><img src="{{ url_for('static', filename='themes/OpenROV/img/openrov.png')}}" class="logo"/></a>
+        <!--<ul class="nav" id="navtoolbar">
+          <li><a href="#"><img id="keyboardpopover" src="{{ url_for('static', filename='themes/OpenROV/img/keyboard.png')}}" data-trigger="hover" data-placement="bottom" rel='popover' title="keyboard commands" html="true" /></a></li>
+          <li><a href="#" id="servoTilt"></a></li>
+        </ul>-->
+        <ul id="menuitems" class="nav pull-right">
+          <li><a href="{{url_for('rovPreferences')}}" id="settings">Settings</a></li>
+          <li><a href="#" id="show-diagnostic">Diagnostic</a></li>
+        </ul>
+      </div>
+    </div>
+
+        <!-- Main ROW -->
+        <!--<script type="text/javascript" src="{{ url_for('static', filename='plugins/horizon/public/js/horizon.js') }}"></script>-->
+
+        <div id="main-row" class="container-fluid full-height" style="height:100%">
+          <div id="rov_status_panel" class="span3 pull-right visible-desktop" style="overflow: hidden; height:100%">
+            <div id="buttonPanel" class="controller well well-small" style=""></div>
+
+          </div>
+          <div class="row-fluid full-height" style="background:transparent">
+            <div class="span9 border full-height" id="outter-videocontainer" style="width:80%">
+              <div id="video-container"  border='1' style="height:100%;">
+                  <embed type="application/x-vlc-plugin" pluginspage="http://www.videolan.org" version="VideoLAN.VLCPlugin.2"  width="100%"  height="100%" id="vlc" autoplay="yes" target="https://www.youtube.com/watch?v=8S6KW4QYXsw"></embed>
+              </div>
+            </div>
+          </div>
+        </div>
+        <script>
+            var AH, skyColor = '#33f', earthColor = '#992', frontCameraFovY = 70, majorWidth = 100, minorWidth = 60, zeroWidth = 200, zeroGap = 20, radialLimit = 60, tickRadius = 10, radialRadius = 178, speedIndicatorHeight = 360, speedIndicatorWidth = 60, zeroPadding = 100, speedAltOpacity = 0.2, pixelsPer10Kmph = 50, minorTicksPer10Kmph = 5, speedWarningWidth = 10, yellowBoundarySpeed = 100, redBoundarySpeed = 130, altIndicatorHeight = 360, altIndicatorWidth = 50, majorTickWidth = 10, minorTickWidth = 5, pixelsPer100Ft = 50, minorTicksPer100Ft = 5;
+            namespace = '/test'; // change to an empty string to use the global namespace
+            // the socket.io documentation recommends sending an explicit package upon connection
+            // this is specially important when using the global namespace
+            var headings = [
+                  'N',
+                  'E',
+                  'S',
+                  'W'
+                ], Compass;
+            var socket = io.connect('http://' + document.domain + ':' + location.port + namespace);
+            //console.log('http://' + document.domain + ':' + location.port + namespace)
+
+        console.log('Adding Compass to Artificial Horizon.');
+                // Instance variables
+                // Add required UI elements
+                $('#rov_status_panel').append('<div id="compass" class="hud"></div>');
+                var div = $('#compass').get(0);
+                // Listen to navdata updates
+
+                // Setup compass canvas
+                var divRect = div.getBoundingClientRect(), ctx, x, i, needle;
+                //console.log(divRect);
+                div.style.position = 'relative';
+                // div.style.bottom = '0px';
+                div.style.backgroundImage = '-webkit-radial-gradient(50% 50%, circle cover, rgb(68, 68, 68) 0%, black 100%)';
+                this.visibleWidth = divRect.width * (720 / 120); //divRect.width; //
+
+                this.canvas = document.createElement('canvas');
+                this.canvas.width = this.visibleWidth ; //* 2
+                this.canvas.height = divRect.height;
+                //this.canvas.style.position = 'absolute';
+                this.canvas.className = 'hud';
+                div.style.overflow = 'hidden';
+                ctx = this.canvas.getContext('2d');
+                x = 0;
+                ctx.textAlign = 'center';
+                for (i = 0; i < 360 * 2; i += 1) {
+                  ctx.beginPath();
+                  ctx.moveTo(x, 0);
+                  if (i % 90 === 0) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold';
+                    ctx.fillText(headings[i / 90 % 4], x, 24);
+                    ctx.strokeStyle = 'white';
+                    ctx.lineTo(x, 10);
+                    ctx.lineWidth = 2;
+                  } else if (i % 10 === 0) {
+                    ctx.fillStyle = '#CCC';
+                    ctx.font = 'normal';
+                    ctx.fillText(i % 360, x, 24);
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
+                    ctx.lineTo(x, 7);
+                  } else {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineTo(x, 5);
+                    ctx.lineWidth = 0.5;
+                  }
+                  ctx.stroke();
+                  x += this.visibleWidth / 720;
+                }
+                div.appendChild(this.canvas);
+                needle = document.createElement('canvas');
+                needle.id = "needle";
+                needle.width = 15;
+                needle.height = 15;
+                needle.style.top = 0;
+                needle.style.left = Math.floor(this.visibleWidth / 2 * (120 / 720) - needle.width / 2) + 'px';
+                needle.style.position = 'absolute';
+                ctx = needle.getContext('2d');
+                ctx.fillStyle = 'red';
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.ceil(needle.width / 2), needle.height);
+                ctx.lineTo(needle.width, 0);
+                ctx.lineTo(0, 0);
+                ctx.fill();
+                div.appendChild(needle);
+                this.moveTo(0);
+
+                var self = this;
+
+              moveTo = function (angle) {
+                angle = (parseFloat(angle[0]) / (Math.PI * 2)) * 360;
+                //console.log(angle);
+                var offset, compass = this;
+                while (angle > 180) {
+                  angle -= 360;
+                }
+                while (angle < -180) {
+                  angle += 360;
+                }
+                offset = -angle * (this.visibleWidth / 720);
+                offset -= this.visibleWidth / 2;
+                // '-webkit-transform'
+                window.requestAnimationFrame(function () {
+                  // compass.canvas.getContext('2d').scale((10),1);
+                  compass.canvas.style.webkitTransform = 'scale(,1)' + offset + 'px)';
+                  compass.canvas.style.webkitTransform = 'translateX(' + offset + 'px)';
+                });
+              };
+
+
+        console.log('Loading Artificial Horizon plugin.');
+            // Instance variables
+            this.roll = 0;
+            this.pitch = 0;
+            this.altitude = 0;
+            this.speed = 0;
+            // Add required UI elements
+            $('#rov_status_panel').append('<canvas id="horizon" class="hud" width="270" height="60" style= "position:relative; background-image: -webkit-radial-gradient(50% 50%, circle cover, rgb(68, 68, 68) 0%, black 100%)";></canvas>');
+            this.ctx = $('#horizon').get(0).getContext('2d');
+            $('#rov_status_panel').append('<canvas id="speedDepth" class="hud" width="270" height="370" style= "position:relative; background-image: -webkit-radial-gradient(50% 50%, circle cover, rgb(68, 68, 68) 0%, black 100%)";></canvas>');
+                this.ctx2 = $('#speedDepth').get(0).getContext('2d');
+            // Bind to navdata events on websockets
+            socket.on('navdata', function (data) {
+                //console.log(data);
+              if (!jQuery.isEmptyObject(data)) {
+                requestAnimationFrame(function () {
+                  render(data["data"]);
+                  moveTo(data["data"]);
+                });
+              }
+            });
+            render = function (data) {
+                this.setValues({
+                  roll: parseFloat(data[2]),
+                  pitch: parseFloat(data[1]),
+                  altitude: 10.0, //data.altitude
+                  speed: 5.0 //data.thrust
+                });
+                //console.log(data[2]);
+                this.draw();
+              };
+            setValues = function setValues(values) {
+                this.roll = values.roll;
+                this.pitch = values.pitch;
+                this.altitude = values.altitude;
+                this.speed = values.speed;
+              };
+            drawHorizon = function drawHorizon() {
+                var pitchPixels, i, pitchAngle;
+                this.ctx.save();
+                this.ctx.translate(this.ctx.canvas.width / 2, this.ctx.canvas.height / 2);
+                this.ctx.rotate(-this.roll);
+
+                //console.log(pitchPixels);
+                if (((this.pitch / (Math.PI * 2))* 360) < 180){
+                    pitchPixels = (this.pitch / (Math.PI * 2))* 360 * this.pixelsPerDeg;
+                }
+                else{
+                    pitchPixels = (-360 + (this.pitch / (Math.PI * 2))* 360) * this.pixelsPerDeg;
+                }
+                this.ctx.translate(0, pitchPixels);
+                /*
+                    this.ctx.fillStyle = skyColor;
+                    this.ctx.fillRect(-10000, -10000, 20000, 10000);
+                    this.ctx.fillStyle = earthColor;
+                    this.ctx.fillRect(-10000, 0, 20000, 10000);
+                    */
+                // horizon
+                this.ctx.strokeStyle = '#fff';
+                this.ctx.fillStyle = 'white';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(-10000, 0);
+                this.ctx.lineTo(20000, 0);
+                this.ctx.stroke();
+                this.ctx.beginPath();
+                this.ctx.arc(0, -pitchPixels, radialRadius, 0, Math.PI * 2, false);
+                this.ctx.closePath();
+                this.ctx.clip();
+                this.ctx.beginPath();
+                for (i = -18; i <= 18; ++i) {
+                  pitchAngle = i / 2 * 10;
+                  if (i !== 0) {
+                    if (i % 2 === 0) {
+                      this.ctx.moveTo(-majorWidth / 2, -this.pixelsPerDeg * pitchAngle);
+                      this.ctx.lineTo(+majorWidth / 2, -this.pixelsPerDeg * pitchAngle);
+                      this.ctx.fillText(pitchAngle, -majorWidth / 2 - 20, -this.pixelsPerDeg * 10 / 2 * i);
+                      this.ctx.fillText(pitchAngle, majorWidth / 2 + 10, -this.pixelsPerDeg * 10 / 2 * i);
+                    } else {
+                      this.ctx.moveTo(-minorWidth / 2, -this.pixelsPerDeg * pitchAngle);
+                      this.ctx.lineTo(+minorWidth / 2, -this.pixelsPerDeg * pitchAngle);
+                    }
+                  }
+                }
+                this.ctx.closePath();
+                this.ctx.stroke();
+                this.ctx.restore();
+              };
+            drawZero = function drawZero() {
+                var i;
+                this.ctx.save();
+                this.ctx.translate(this.ctx.canvas.width / 2, this.ctx.canvas.height / 2);
+                this.ctx.strokeStyle = 'yellow';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(-zeroWidth / 2, 0);
+                this.ctx.lineTo(-zeroGap / 2, 0);
+                this.ctx.moveTo(+zeroWidth / 2, 0);
+                this.ctx.lineTo(+zeroGap / 2, 0);
+                this.ctx.moveTo(-zeroGap / 2, zeroGap / 2);
+                this.ctx.lineTo(0, 0);
+                this.ctx.lineTo(+zeroGap / 2, zeroGap / 2);
+                this.ctx.stroke();
+                // The radial roll indicator
+                this.ctx.beginPath();
+                this.ctx.arc(0, 0, radialRadius, -Math.PI / 2 - Math.PI * radialLimit / 180, -Math.PI / 2 + Math.PI * radialLimit / 180, false);
+                this.ctx.stroke();
+                for (i = -4; i <= 4; ++i) {
+                  this.ctx.moveTo((radialRadius - tickRadius) * Math.cos(-Math.PI / 2 + i * 15 / 180 * Math.PI), (radialRadius - tickRadius) * Math.sin(-Math.PI / 2 + i * 15 / 180 * Math.PI));
+                  this.ctx.lineTo(radialRadius * Math.cos(-Math.PI / 2 + i * 15 / 180 * Math.PI), radialRadius * Math.sin(-Math.PI / 2 + i * 15 / 180 * Math.PI));
+                }
+                this.ctx.stroke();
+                this.ctx.restore();
+              };
+            drawRoll = function drawRoll() {
+                this.ctx.save();
+                this.ctx.translate(this.ctx.canvas.width / 2, this.ctx.canvas.height / 2);
+                this.ctx.rotate(-this.roll);
+                this.ctx.fillStyle = 'white';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -radialRadius);
+                this.ctx.lineTo(-5, -radialRadius + 10);
+                this.ctx.lineTo(+5, -radialRadius + 10);
+                this.ctx.closePath();
+                this.ctx.fill();
+                var readableRollAngle = Math.round(this.roll / Math.PI / 2 * 360) % 360;
+                if (readableRollAngle > 180) {
+                  readableRollAngle = readableRollAngle - 360;
+                }
+                this.ctx.fillRect(-20, -radialRadius + 9, 40, 16);
+                this.ctx.font = '12px Arial';
+                this.ctx.fillStyle = 'black';
+                this.ctx.fillText(readableRollAngle, -7, -radialRadius + 22);
+                this.ctx.restore();
+              };
+            drawSpeed = function drawSpeed() {
+
+                var yellowBoundaryY, redBoundaryY, yOffset, from, to, i, j;
+                this.ctx2.save();
+                this.ctx2.translate(this.ctx.canvas.width - speedIndicatorWidth, this.ctx.canvas.height / 2);
+                //this.ctx.translate(-zeroWidth / 2 - zeroPadding - speedIndicatorWidth, 0);
+                this.ctx2.fillStyle = 'rgba(0,0,0,' + speedAltOpacity + ')';
+                this.ctx2.strokeStyle = 'white';
+                this.ctx2.lineWidth = 2;
+                this.ctx2.strokeRect(0, -speedIndicatorHeight / 2, speedIndicatorWidth, speedIndicatorHeight);
+                this.ctx2.fillRect(0, -speedIndicatorHeight / 2, speedIndicatorWidth, speedIndicatorHeight);
+                this.ctx2.restore();
+                this.ctx2.save();
+                this.ctx2.translate(this.ctx.canvas.width - speedIndicatorWidth, this.ctx.canvas.height / 2);
+                //this.ctx.translate(-zeroWidth / 2 - zeroPadding - speedIndicatorWidth, 0);
+                this.ctx2.rect(0, -speedIndicatorHeight / 2, speedIndicatorWidth, speedIndicatorHeight);
+                this.ctx2.clip();
+                yellowBoundaryY = -(-this.speed + yellowBoundarySpeed) / 10 * pixelsPer10Kmph;
+                redBoundaryY = -(-this.speed + redBoundarySpeed) / 10 * pixelsPer10Kmph;
+                this.ctx2.fillStyle = 'yellow';
+                this.ctx2.fillRect(speedIndicatorWidth - speedWarningWidth, yellowBoundaryY, speedWarningWidth, redBoundaryY - yellowBoundaryY);
+                this.ctx2.fillStyle = 'red';
+                this.ctx2.fillRect(speedIndicatorWidth - speedWarningWidth, redBoundaryY, speedWarningWidth, -speedIndicatorHeight / 2 - redBoundaryY);
+                this.ctx2.fillStyle = 'green';
+                this.ctx2.fillRect(speedIndicatorWidth - speedWarningWidth, yellowBoundaryY, speedWarningWidth, +speedIndicatorHeight / 2 - yellowBoundaryY);
+                yOffset = this.speed / 10 * pixelsPer10Kmph;
+                // The unclipped ticks to be rendered.
+                // We render 100kmph either side of the center to be safe
+                from = -Math.floor(this.speed / 10) - 10;
+                to = Math.ceil(this.speed / 10) + 10;
+                for (i = from; i < to; ++i) {
+                  this.ctx2.moveTo(speedIndicatorWidth - speedWarningWidth, -i * pixelsPer10Kmph + yOffset);
+                  this.ctx2.lineTo(speedIndicatorWidth - speedWarningWidth - majorTickWidth, -i * pixelsPer10Kmph + yOffset);
+                  for (j = 1; j < minorTicksPer10Kmph; ++j) {
+                    this.ctx2.moveTo(speedIndicatorWidth - speedWarningWidth, -i * pixelsPer10Kmph - j * pixelsPer10Kmph / minorTicksPer10Kmph + yOffset);
+                    this.ctx2.lineTo(speedIndicatorWidth - speedWarningWidth - minorTickWidth, -i * pixelsPer10Kmph - j * pixelsPer10Kmph / minorTicksPer10Kmph + yOffset);
+                  }
+                  this.ctx2.font = '12px Arial';
+                  this.ctx2.fillStyle = 'white';
+                  this.ctx2.fillText(i * 10, 20, -i * pixelsPer10Kmph + yOffset + 4);
+                }
+                this.ctx2.strokeStyle = 'white';
+                this.ctx2.lineWidth = 2;
+                this.ctx2.stroke();
+                this.ctx2.beginPath();
+                this.ctx2.moveTo(speedIndicatorWidth - speedWarningWidth - minorTickWidth, 0);
+                this.ctx2.lineTo(speedIndicatorWidth - speedWarningWidth - minorTickWidth * 2, -5);
+                this.ctx2.lineTo(speedIndicatorWidth - speedWarningWidth - minorTickWidth * 2, -10);
+                this.ctx2.lineTo(0, -10);
+                this.ctx2.lineTo(0, 10);
+                this.ctx2.lineTo(speedIndicatorWidth - speedWarningWidth - minorTickWidth * 2, 10);
+                this.ctx2.lineTo(speedIndicatorWidth - speedWarningWidth - minorTickWidth * 2, 5);
+                this.ctx2.closePath();
+                this.ctx2.fill();
+                this.ctx2.strokeStyle = 'black';
+                this.ctx2.fillStyle = 'black';
+                this.ctx2.fillText(Math.round(this.speed * 100) / 100, 15, 4.5, altIndicatorHeight);
+                this.ctx2.restore();
+              };
+            drawAltitude = function drawAltitude() {
+                var yOffset, from, to, i, j;
+                this.ctx2.save();
+                this.ctx2.translate(0, this.ctx.canvas.height / 2); // this.ctx.canvas.width / 2, this.ctx.canvas.height / 2
+                //this.ctx2.translate(zeroWidth / 2 + zeroPadding, 0);
+                this.ctx2.fillStyle = 'rgba(0,0,0,' + speedAltOpacity + ')';
+                this.ctx2.strokeStyle = 'white';
+                this.ctx2.lineWidth = 2;
+                this.ctx2.fillRect(0, -altIndicatorHeight / 2, altIndicatorWidth, altIndicatorHeight);
+                this.ctx2.strokeRect(0, -altIndicatorHeight / 2, altIndicatorWidth, altIndicatorHeight);
+                this.ctx2.restore();
+                this.ctx2.save();
+                this.ctx2.translate(0, this.ctx.canvas.height / 2);
+                //this.ctx2.translate(zeroWidth / 2 + zeroPadding, 0);
+                this.ctx2.rect(0, -altIndicatorHeight / 2, altIndicatorWidth, altIndicatorHeight);
+                this.ctx2.clip();
+                yOffset = this.altitude / 1 * pixelsPer100Ft;
+                // The unclipped ticks to be rendered. We render 500ft either side of
+                // the center to be safe
+                from = Math.floor(this.altitude / 1) - 5;
+                to = Math.ceil(this.altitude / 1) + 5;
+                for (i = from; i < to; ++i) {
+                  this.ctx2.moveTo(0, -i * pixelsPer100Ft + yOffset);
+                  this.ctx2.lineTo(majorTickWidth, -i * pixelsPer100Ft + yOffset);
+                  for (j = 1; j < minorTicksPer100Ft; ++j) {
+                    this.ctx2.moveTo(0, -i * pixelsPer100Ft - j * pixelsPer100Ft / minorTicksPer100Ft + yOffset);
+                    this.ctx2.lineTo(minorTickWidth, -i * pixelsPer100Ft - j * pixelsPer100Ft / minorTicksPer100Ft + yOffset);
+                  }
+                  this.ctx2.font = '12px Arial';
+                  this.ctx2.fillStyle = 'white';
+                  this.ctx2.fillText(i * 1, 15, -i * pixelsPer100Ft + yOffset + 4);
+                }
+                this.ctx2.strokeStyle = 'white';
+                this.ctx2.lineWidth = 2;
+                this.ctx2.stroke();
+                this.ctx2.restore();
+                this.ctx2.save();
+                this.ctx2.translate(0, this.ctx.canvas.height / 2);
+                //this.ctx.translate(zeroWidth + zeroPadding, 0);
+                this.ctx2.strokeStyle = 'white';
+                this.ctx2.lineWidth = 2;
+                this.ctx2.font = '12px Arial';
+                this.ctx2.fillStyle = 'white';
+                this.ctx2.fillOpacity = 1;
+                this.ctx2.beginPath();
+                this.ctx2.moveTo(minorTickWidth, 0);
+                this.ctx2.lineTo(minorTickWidth * 2, -5);
+                this.ctx2.lineTo(minorTickWidth * 2, -10);
+                this.ctx2.lineTo(altIndicatorWidth, -10); //altIndicatorWidth
+                this.ctx2.lineTo(altIndicatorWidth, 10);
+                this.ctx2.lineTo(minorTickWidth * 2, 10);
+                this.ctx2.lineTo(minorTickWidth * 2, 5);
+                this.ctx2.closePath();
+                this.ctx2.fill();
+                this.ctx2.strokeStyle = 'black';
+                this.ctx2.fillStyle = 'black';
+                this.ctx2.fillText(Math.round(this.altitude * 100) / 100, 15, 4.5, altIndicatorHeight); //altIndicatorHeight
+                this.ctx2.restore();
+              };
+            draw = function draw() {
+                var width = $('#rov_status_panel').innerWidth() - 5;
+                var height = (radialRadius * 2) + 7; //$('#rov_status_panel').innerHeight()/2;
+                this.ctx.canvas.width = width;
+                this.ctx.canvas.height = height;
+                this.pixelsPerDeg = height / (height / 2); //frontCameraFovY
+                //console.log(this.pixelsPerDeg);
+                this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+                this.drawHorizon();
+                this.drawZero();
+                this.drawRoll();
+                this.drawSpeed();
+                this.drawAltitude();
+              };
+
+
+
+        </script>
+
+        <!-- SETTINGS -->
+        <div class="drop-in-right" id="settings">
+          <div class="back-button"></div><h3>Settings</h3>
+
+          </div>
+        </div>
+
+        <div class="drop-in-right" id="diagnostic">
+            <div class="back-button"></div><h3>Diagnostics</h3>
+            <div class="settings-block">
+                <h4>Pre-Flight Check</h4>
+            </div>
+                <div class="settings-block">
+                <h4>Callibration</h4>
+                <a href="#" class="btn" id="callibrate_compass">Callibrate Compass</a>
+                <a href="#" class="btn" id="zero_depth">Zero Depth</a>
+            </div>
+
+        </div>
+        <div class="hidden" id="keyboardInstructions">
+            <p>
+                Use the <i>Up</i>, <i>Down</i>, <i>Left</i>, <i>Right</i>, <i>Shift</i> and <i>Ctrl</i> keys to maneuver.
+                Use <i>1</i>-<i>5</i> to set power. <i>7</i>,<i>8</i> (lift) and <i>9</i>,<i>0</i> (thrust) trim. Space for all stop.
+            </p>
+            <p>Use <i>Q</i>, <i>A</i>, <i>Z</i> to tilt servo.</p>
+            <p>Use <i>o</i>, <i>p</i> to increase brightness of lights.</p>
+            <p>Use <i>l</i> to toggle callibration lasers.</p>
+        </div>
+
+
+        <!-- Le javascript
+        ================================================== -->
+        <!-- Placed at the end of the document so the pages load faster -->
+
+
+        <script> //Load conditional js files</script>
+
+        <script>
+
+          $(function() {
+            if (window.io == undefined) {
+              alert("detected no socket found");
+              var mysocket = function(){
+
+              }
+              mysocket.prototype.emit = function(x){console.log(x);};
+              mysocket.prototype.emit = function(x,y){console.log(x);console.log(y);};
+              simevents = new Object();
+              mysocket.prototype.on = function(x,y){
+                console.log("registering " + x);
+                if (simevents.x == undefined) {
+                  simevents[x] = [];
+                }
+                simevents[x].push(y);
+            };
+
+              var io = new mysocket();
+              var socket = new mysocket();
+              CONFIG = new Object();
+              CONFIG.sample_freq = 20;
+
+            } else {
+            var socket = window.io.connect();
+            }
+
+            /* ------------------------------------------
+               settings
+            */
+            var options = {};
+            var keyboard = null;
+            $("#show-settings").click(function() {
+              $("#settings").show('fold');
+              cockpit.sendUpdateEnabled=false;
+              Mousetrap.bind('esc', hideSettings);
+              keyboardHandler.unbindKeys();
+            });
+
+            $("#settings .back-button").click(function() {
+              hideSettings();
+            });
+
+            function hideSettings() {
+              $("#settings").hide('fold');
+              cockpit.sendUpdateEnabled = true;
+              Mousetrap.unbind('esc');
+              keyboardHandler.bindKeys()
+            }
+
+              /* ------------------------------------------
+               diagnostic
+               */
+              var options = {};
+
+
+              $("#show-diagnostic").click(function() {
+                  $("#diagnostic").show('fold');
+                  cockpit.sendUpdateEnabled=false;
+                  Mousetrap.bind('esc', hideDiagnostic);
+                  keyboardHandler.unbindKeys();
+              });
+
+              $("#diagnostic .back-button").click(function() {
+                  hideDiagnostic();
+              });
+
+              function hideDiagnostic() {
+                  $("#diagnostic").hide('fold');
+                  cockpit.sendUpdateEnabled=true;
+                  Mousetrap.unbind('esc');
+                  keyboardHandler.bindKeys();
+              }
+
+
+          $('#zero_depth').click(function() {
+            socket.emit('depth_zero');
+          });
+
+          $('#callibrate_compass').click(function() {
+            socket.emit('compass_callibrate');
+          });
+
+            //plugin hooks
+            setupFrameHandling(socket);
+           var cockpit = new Cockpit(socket);
+
+
+
+          });
+
+        //We have a contract for centralizing all keyboad instructions. This code
+        //wires that content to where we display it in a popover.
+        //$('#keyboardpopover').hover(function(){
+        //    $('#keyboardpopover').attr('data-content',$('#keyboardInstructions').html());
+        //});
+
+        //$("[rel='popover']").popover();
+
+        //$('#keyboardInstructions').append('<p><i>\\</i> to toggle heads up display</p>');
+        //KEYS[220] = {keydown: function() {  //capslog
+        //         $('.hud').toggleClass('hidden');
+        //         console.log("capslock");
+        //        }};
+
+                // The next session draws the video img to a canvas which is then managed by the GPU
+                // and is much faster than the browser painting the img tag.
+        //var canvas = document.getElementById('video-canvas');
+        //var srcImg = document.getElementById('video');
+        //var videocontainer = $('#video-container');
+        //var newCanvas, newImg;
+
+        //setInterval(function(){
+        //    var width = videocontainer.innerWidth();
+        //    var height = videocontainer.innerHeight();
+
+        //    canvas.width = width;
+        //    canvas.height = height;
+        //    var ctx = canvas.getContext('2d');
+        //    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        //    var proportionalHeight = width * srcImg.height / srcImg.width
+        //    ctx.drawImage(srcImg,0,(canvas.height-proportionalHeight)/2,width, proportionalHeight);
+        //},64); //only need to redraw at the framerate of source video
+
+        </script>
+
+    </body>
+{% endblock %}
+
+
